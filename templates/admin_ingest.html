@@ -18,8 +18,9 @@
     header a { color: var(--accent); text-decoration: none; font-size: 14px; }
     main { padding: 24px; max-width: 1100px; margin: 0 auto; }
     h1 { font-size: 22px; font-weight: 700; margin: 0 0 8px; }
+    h2.section { font-size: 18px; font-weight: 700; margin: 36px 0 12px; }
     .sub { color: var(--muted); margin-bottom: 24px; font-size: 14px; }
-    .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
     .tabs a {
       padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px;
       color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600;
@@ -37,13 +38,13 @@
       font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 999px;
       border: 1px solid var(--line); color: var(--text);
     }
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     button {
       font-family: var(--font); font-weight: 700; font-size: 13px; border: 0; border-radius: 8px;
       padding: 8px 14px; cursor: pointer;
     }
     .approve { background: var(--ok); color: #04140a; }
-    .reject { background: transparent; color: var(--bad); border: 1px solid var(--bad); }
+    .reject, .delete { background: transparent; color: var(--bad); border: 1px solid var(--bad); }
     .empty { color: var(--muted); padding: 40px 0; text-align: center; }
     details { margin-top: 10px; }
     summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600; }
@@ -51,6 +52,23 @@
       white-space: pre-wrap; word-break: break-word; background: #0a0e13; border: 1px solid var(--line);
       border-radius: 8px; padding: 12px; font-size: 12px; color: var(--muted); max-height: 220px; overflow: auto;
     }
+    .flash {
+      padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; font-weight: 600;
+    }
+    .flash.ok { background: rgba(34,197,94,0.15); border: 1px solid var(--ok); color: var(--ok); }
+    .flash.bad { background: rgba(239,68,68,0.15); border: 1px solid var(--bad); color: var(--bad); }
+    table.live {
+      width: 100%; border-collapse: collapse; background: var(--panel);
+      border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    }
+    table.live th, table.live td {
+      text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line);
+      font-size: 13px; vertical-align: middle;
+    }
+    table.live th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+    table.live tr:last-child td { border-bottom: 0; }
+    table.live a { color: var(--accent); text-decoration: none; }
+    table.live .mono { font-family: var(--mono); font-size: 12px; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -61,6 +79,10 @@
     <a href="/admin/logout" style="margin-left:auto">Logout</a>
   </header>
   <main>
+    {% for category, message in messages %}
+      <div class="flash {{ category }}">{{ message }}</div>
+    {% endfor %}
+
     <h1>Review ingest candidates</h1>
     <p class="sub">Pending rows stay off the homepage until you approve. Password-protected admin.</p>
     <div class="tabs">
@@ -71,7 +93,7 @@
     </div>
 
     {% if not candidates %}
-      <div class="empty">No {{ status }} candidates. Run <code>python -m ingest</code>.</div>
+      <div class="empty">No {{ status }} candidates. Run <code>python -m ingest</code> or <code>POST /admin/run-ingest</code>.</div>
     {% endif %}
 
     {% for c in candidates %}
@@ -101,6 +123,43 @@
         </details>
       </article>
     {% endfor %}
+
+    <h2 class="section" id="live">Live strategies ({{ live_strategies|length }})</h2>
+    <p class="sub" style="margin-top:-8px">Hard-delete removes the row from the homepage. Staging reject is separate — use Reject above for candidates.</p>
+    {% if not live_strategies %}
+      <div class="empty">No live strategies.</div>
+    {% else %}
+      <table class="live">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Tags</th>
+            <th>Source</th>
+            <th>Likes</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in live_strategies %}
+            <tr>
+              <td>
+                <a href="/s/{{ s.slug }}">{{ s.title }}</a>
+                <div class="mono">{{ s.slug }}</div>
+              </td>
+              <td class="mono">{{ s.badge }} · {{ s.asset }} · {{ s.timeframe }} · {{ s.style }}</td>
+              <td class="mono">{{ s.source_name }}</td>
+              <td class="mono">{{ s.like_count or 0 }}</td>
+              <td>
+                <form method="post" action="/admin/strategies/{{ s.slug }}/delete"
+                      onsubmit='return confirm("Delete live strategy " + {{ s.slug|tojson }} + "? This cannot be undone.");'>
+                  <button class="delete" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
   </main>
 </body>
 </html>

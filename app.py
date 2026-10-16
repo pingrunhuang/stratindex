@@ -16,6 +16,8 @@ from zoneinfo import ZoneInfo
 from flask import (
     Flask,
     abort,
+    flash,
+    get_flashed_messages,
     jsonify,
     redirect,
     render_template,
@@ -496,11 +498,21 @@ def admin_ingest():
                 "SELECT * FROM ingest_candidates WHERE status = ? ORDER BY id DESC",
                 (status,),
             ).fetchall()
+        live = [
+            dict(r)
+            for r in conn.execute(
+                "SELECT id, slug, badge, title, asset, timeframe, style, source_name, "
+                "last_backtest_at, like_count FROM strategies ORDER BY id DESC"
+            ).fetchall()
+        ]
+    messages = get_flashed_messages(with_categories=True)
     return render_template(
         "admin_ingest.html",
         candidates=[dict(r) for r in rows],
         status=status,
         counts=counts,
+        live_strategies=live,
+        messages=messages,
     )
 
 
@@ -512,6 +524,7 @@ def admin_ingest_approve(cid):
         slug = promote(cid)
     except SystemExit as e:
         return str(e), 400
+    flash(f"Approved → live as {slug}", "ok")
     return redirect(url_for("admin_ingest", status="approved"))
 
 
@@ -523,7 +536,29 @@ def admin_ingest_reject(cid):
         reject(cid)
     except SystemExit as e:
         return str(e), 400
+    flash(f"Rejected candidate #{cid}", "ok")
     return redirect(url_for("admin_ingest", status="rejected"))
+
+
+@app.post("/admin/strategies/<slug>/delete")
+@login_required
+def admin_strategy_delete(slug):
+    """Hard-delete a live strategy. Staging candidates use reject — not this route."""
+    slug = (slug or "").strip()
+    if not slug:
+        abort(400)
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id, title FROM strategies WHERE slug = ?", (slug,)
+        ).fetchone()
+        if row is None:
+            flash(f"Strategy not found: {slug}", "bad")
+            return redirect(url_for("admin_ingest", status="pending"))
+        conn.execute("DELETE FROM strategies WHERE slug = ?", (slug,))
+        conn.commit()
+        title = row["title"]
+    flash(f"Deleted live strategy: {title} ({slug})", "ok")
+    return redirect(url_for("admin_ingest", status="pending"))
 
 
 @app.post("/admin/run-ingest")
