@@ -12,6 +12,8 @@ services:
     image: stratindex:local
     container_name: stratindex
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
       - "${PORT:-5055}:${PORT:-5055}"
     environment:
