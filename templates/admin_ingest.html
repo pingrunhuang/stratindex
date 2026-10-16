@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StratIndex · Ingest review</title>
+  <link rel="icon" href="/static/logo.jpg" />
+  <style>
+    :root {
+      --bg: #0b0f14; --panel: #121820; --line: #243041;
+      --text: #e8eef6; --muted: #8b9bb0; --accent: #3b82f6; --ok: #22c55e; --bad: #ef4444;
+      --font: "Funnel Sans", "Segoe UI", system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); }
+    header { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--line); }
+    header img { width: 36px; height: 36px; border-radius: 8px; }
+    header a { color: var(--accent); text-decoration: none; font-size: 14px; }
+    main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 22px; font-weight: 700; margin: 0 0 8px; }
+    .sub { color: var(--muted); margin-bottom: 24px; font-size: 14px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .tabs a {
+      padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px;
+      color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600;
+    }
+    .tabs a.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+      padding: 18px 20px; margin-bottom: 16px;
+    }
+    .meta { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .title { font-size: 17px; font-weight: 700; margin: 0 0 6px; }
+    .thesis { color: var(--muted); font-size: 14px; line-height: 1.5; margin-bottom: 10px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .tag {
+      font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--text);
+    }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      font-family: var(--font); font-weight: 700; font-size: 13px; border: 0; border-radius: 8px;
+      padding: 8px 14px; cursor: pointer;
+    }
+    .approve { background: var(--ok); color: #04140a; }
+    .reject { background: transparent; color: var(--bad); border: 1px solid var(--bad); }
+    .empty { color: var(--muted); padding: 40px 0; text-align: center; }
+    details { margin-top: 10px; }
+    summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600; }
+    pre {
+      white-space: pre-wrap; word-break: break-word; background: #0a0e13; border: 1px solid var(--line);
+      border-radius: 8px; padding: 12px; font-size: 12px; color: var(--muted); max-height: 220px; overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/static/logo.jpg" alt="StratIndex" />
+    <strong>StratIndex · Ingest</strong>
+    <a href="/">← Live site</a>
+    <a href="/admin/logout" style="margin-left:auto">Logout</a>
+  </header>
+  <main>
+    <h1>Review ingest candidates</h1>
+    <p class="sub">Pending rows stay off the homepage until you approve. Password-protected admin.</p>
+    <div class="tabs">
+      <a href="/admin/ingest?status=pending" class="{{ 'active' if status=='pending' else '' }}">Pending ({{ counts.pending }})</a>
+      <a href="/admin/ingest?status=approved" class="{{ 'active' if status=='approved' else '' }}">Approved ({{ counts.approved }})</a>
+      <a href="/admin/ingest?status=rejected" class="{{ 'active' if status=='rejected' else '' }}">Rejected ({{ counts.rejected }})</a>
+      <a href="/admin/ingest?status=all" class="{{ 'active' if status=='all' else '' }}">All ({{ counts.all }})</a>
+    </div>
+
+    {% if not candidates %}
+      <div class="empty">No {{ status }} candidates. Run <code>python -m ingest</code>.</div>
+    {% endif %}
+
+    {% for c in candidates %}
+      <article class="card">
+        <div class="meta">#{{ c.id }} · {{ c.source_name }} · {{ c.ai_model or '—' }} · {{ c.status }} · {{ c.created_at }}</div>
+        <h2 class="title">{{ c.title or '(untitled)' }}</h2>
+        <p class="thesis">{{ c.thesis or '' }}</p>
+        <div class="tags">
+          <span class="tag">{{ c.badge or '—' }}</span>
+          <span class="tag">{{ c.asset or '—' }}</span>
+          <span class="tag">{{ c.timeframe or '—' }}</span>
+          <span class="tag">{{ c.style or '—' }}</span>
+          <span class="tag">{{ c.slug or '—' }}</span>
+        </div>
+        {% if c.source_url %}
+          <div class="meta"><a href="{{ c.source_url }}" target="_blank" rel="noopener" style="color:var(--accent)">{{ c.source_url }}</a></div>
+        {% endif %}
+        {% if c.status == 'pending' %}
+          <div class="actions">
+            <form method="post" action="/admin/ingest/{{ c.id }}/approve"><button class="approve" type="submit">Approve → live</button></form>
+            <form method="post" action="/admin/ingest/{{ c.id }}/reject"><button class="reject" type="submit">Reject</button></form>
+          </div>
+        {% endif %}
+        <details>
+          <summary>Raw excerpt / overview</summary>
+          <pre>{{ c.overview or c.raw_excerpt or '' }}</pre>
+        </details>
+      </article>
+    {% endfor %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script>(function(){var t=localStorage.getItem("stratindex-theme");document.documentElement.setAttribute("data-theme",t==="light"?"light":"dark");})();</script>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>{{ s.title }} — StratIndex</title>
+<link rel="icon" href="{{ url_for('static', filename='logo.jpg') }}" type="image/jpeg">
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Funnel+Sans:wght@300..800&family=Funnel+Display:wght@300..800&family=Geist+Mono:wght@400..700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#000; --panel:#0d0d0d; --line:#262626; --text:#fff;
+  --muted:#a3a3a3; --faint:#858585; --signal:#5aabff;
+  --danger:#ff6b6b; --good:#4ade80; --hatch:#1c1c1c; --wash:#ffffff0d;
+  --marquee-h:2.5rem;
+  --banner-bg:#060d15; --bar-bg:#0a0a0a; --btn-bg:#fff; --btn-fg:#000; --body-text:#ddd; --pre-text:#e6e6e6;
+  --font-sans:"Funnel Sans",ui-sans-serif,system-ui,sans-serif;
+  --font-display:"Funnel Display","Funnel Sans",ui-sans-serif,sans-serif;
+  --font-mono:"Geist Mono",ui-monospace,SFMono-Regular,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;color-scheme:dark}
+body{
+  font-family:var(--font-sans);background:var(--bg);
+  background-image:repeating-linear-gradient(-45deg,transparent 0 5px,var(--hatch) 5px 6px);
+  color:var(--text);padding:0 6px;font-size:14px;line-height:1.55;font-weight:600;
+  -webkit-font-smoothing:antialiased;overflow:auto;
+}
+a{color:inherit;text-decoration:none}
+a:hover{color:var(--signal)}
+.frame{
+  max-width:68rem;margin:0 auto;height:auto;min-height:calc(100vh - var(--marquee-h));
+  background:var(--bg);border-inline:1px dashed var(--line);
+  display:flex;flex-direction:column;overflow:visible;padding-bottom:calc(var(--marquee-h) + 12px);
+}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:700}
+.label{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:700}
+.mock-banner{
+  font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  text-align:center;padding:4px;color:var(--faint);border-bottom:1px dashed var(--line);background:var(--banner-bg);flex-shrink:0;font-weight:700;
+}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 20px;border-bottom:1px dashed var(--line);flex-shrink:0;
+}
+.wordmark{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:-.02em}
+.wordmark img.logo{width:32px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0;display:block}
+.wordmark span{color:var(--faint);font-weight:600}
+.nav{display:flex;flex-wrap:wrap;gap:16px}
+.nav a{font-size:13px;color:var(--muted);font-weight:700}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-family:var(--font-mono);font-size:11px;color:var(--faint);font-weight:600}
+.tag{border:1px solid var(--line);border-radius:3px;padding:1px 6px;color:var(--muted);font-weight:600}
+.badge-new{
+  color:var(--signal);border:1px solid color-mix(in oklab,var(--signal) 45%,transparent);
+  background:color-mix(in oklab,var(--signal) 12%,transparent);border-radius:3px;padding:1px 6px;
+  text-transform:uppercase;letter-spacing:.06em;font-size:10px;font-weight:700;
+}
+.marquee{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;height:var(--marquee-h);
+  border-top:1px solid var(--line);background:var(--panel);display:flex;align-items:stretch;overflow:hidden;
+}
+.marquee-label{
+  flex-shrink:0;display:flex;align-items:center;padding:0 10px;border-right:1px solid var(--line);
+  font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:700;
+}
+.marquee-track-wrap{flex:1;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 12px),transparent)}
+.marquee-track{display:flex;width:max-content;height:100%;align-items:center;animation:crawl 50s linear infinite}
+.marquee-track:hover{animation-play-state:paused}
+@keyframes crawl{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.sponsor{
+  display:inline-flex;align-items:center;gap:8px;padding:0 16px;font-family:var(--font-mono);
+  font-size:10px;white-space:nowrap;color:var(--muted);border-right:1px dashed var(--line);height:100%;font-weight:600;
+}
+.sponsor .logo{
+  width:18px;height:18px;border-radius:3px;border:1px solid var(--line);background:var(--bg);
+  display:inline-flex;align-items:center;justify-content:center;font-size:8px;color:var(--text);font-weight:700;
+}
+.sponsor .name{color:var(--text);font-size:11px;font-weight:700}
+.sponsor .tagline{color:var(--faint)}
+.sponsor.cta{
+  color:var(--signal);border:1px dashed color-mix(in oklab,var(--signal) 40%,transparent);
+  border-radius:5px;margin:0 10px;padding:0 12px;height:calc(100% - 8px);align-self:center;
+}
+.sponsor.cta .name{color:var(--signal)}
+.detail{padding:24px 28px 40px;max-width:52rem}
+.back{font-family:var(--font-mono);font-size:11px;color:var(--faint);font-weight:700}
+.d-head{display:flex;gap:12px;align-items:flex-start;margin:10px 0 6px}
+.d-head .badge{width:40px;height:40px;font-size:13px;font-weight:700}
+.d-title{font-size:22px;line-height:1.2;letter-spacing:0;font-weight:700}
+.d-thesis{color:var(--muted);font-size:14px;margin:6px 0 10px;font-weight:600}
+.strip{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line);background:var(--panel);margin:10px 0 18px}
+.strip div{padding:12px 14px;border-right:1px dashed var(--line)}
+.strip div:last-child{border-right:0}
+.strip .k{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:700}
+.strip .v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:18px;margin-top:2px;font-weight:700}
+.up{color:var(--good)}.dn{color:var(--danger)}
+section.blk{border-top:1px dashed var(--line);padding:22px 0}
+section.blk h2{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--signal);margin-bottom:8px;font-weight:700}
+section.blk p{color:var(--body-text);font-size:13.5px;line-height:1.65;margin-bottom:10px;font-weight:600}
+section.blk ul{padding-left:18px;color:var(--body-text);font-size:14px;line-height:1.7;font-weight:600}
+section.blk li{margin-bottom:4px}
+.ph{font-family:var(--font-mono);font-size:10px;color:var(--faint);border:1px dashed var(--line);padding:2px 6px;display:inline-block;margin-bottom:6px;font-weight:700}
+pre.prompt{font-family:var(--font-mono);font-size:13px;line-height:1.6;white-space:pre-wrap;background:var(--panel);border:1px solid var(--line);padding:16px;color:var(--pre-text);font-weight:500}
+.copy{font:inherit;font-family:var(--font-mono);font-size:11px;font-weight:700;padding:4px 10px;border-radius:5px;border:1px solid var(--btn-bg);background:var(--btn-bg);color:var(--btn-fg);cursor:pointer;margin-bottom:8px}
+.badge{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:5px;background:var(--panel);font-family:var(--font-mono);color:var(--muted)}
+.d-actions{display:flex;gap:8px;margin:10px 0 4px;flex-wrap:wrap}
+.d-actions button,.d-actions a{
+  font:inherit;font-size:12px;font-weight:700;padding:6px 12px;border-radius:5px;cursor:pointer;
+  border:1px solid var(--line);background:transparent;color:var(--muted);text-decoration:none;
+}
+.d-actions button.is-saved{
+  color:var(--signal);border-color:color-mix(in oklab,var(--signal) 50%,transparent);
+  background:color-mix(in oklab,var(--signal) 12%,transparent);
+}
+.d-actions button.is-liked{
+  color:var(--signal);border-color:color-mix(in oklab,var(--signal) 50%,transparent);
+  background:color-mix(in oklab,var(--signal) 12%,transparent);
+}
+.d-actions a.share-x:hover{color:var(--signal);border-color:var(--signal)}
+@media (max-width:720px){.strip{grid-template-columns:repeat(2,1fr)}}
+html[data-theme="light"]{
+  --bg:#f4f1ea; --panel:#fffdf8; --line:#8a857c; --text:#141414;
+  --muted:#4a4740; --faint:#6b675e; --signal:#1a6fb5;
+  --danger:#b42318; --good:#1f7a3a; --hatch:#e6e1d6; --wash:#0000000a;
+  --banner-bg:#e8eef5; --bar-bg:#ece8de; --btn-bg:#141414; --btn-fg:#f7f5f0; --body-text:#262420; --pre-text:#1e1e1e;
+}
+html[data-theme="dark"]{color-scheme:dark} html[data-theme="light"]{color-scheme:light}
+.theme-toggle{font:inherit;font-family:var(--font-mono);font-size:11px;font-weight:700;padding:4px 10px;border-radius:5px;border:1px dashed var(--line);background:var(--panel);color:var(--text);cursor:pointer;white-space:nowrap}
+.theme-toggle:hover{border-color:var(--signal);color:var(--signal)}
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="mock-banner">Local StratIndex · placeholder metrics · not investment advice</div>
+  <header class="topbar">
+    <div class="wordmark"><a href="/" style="display:inline-flex;align-items:center;gap:8px"><img class="logo" src="{{ url_for('static', filename='logo.jpg') }}" alt="StratIndex" width="32" height="32"/>StratIndex</a> <span>/ {{ s.slug }}</span></div>
+    <nav class="nav">
+      <a href="/">Strategies</a>
+      <a href="/?view=saved" id="nav-saved">Saved</a>
+      <a href="/api/strategies/{{ s.slug }}">JSON</a>
+      <a href="https://x.com/FRKHuang" target="_blank" rel="noopener">About</a>
+    </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle">☀ Day</button>
+  </header>
+  <main class="detail">
+    <a class="back" href="/">← Back to all strategies</a>
+    <div class="d-head">
+      <div class="badge">{{ s.badge }}</div>
+      <div>
+        <h1 class="d-title">{{ s.title }}</h1>
+        <div class="meta" style="margin-top:6px">
+          {% if s.is_new %}<span class="badge-new">New</span>{% endif %}
+          <span class="tag">{{ s.asset }}</span><span class="tag">{{ s.timeframe }}</span><span class="tag">{{ s.style }}</span>
+          <span>Updated {{ updated }}</span>
+        </div>
+        <div class="d-actions">
+          <button type="button" data-save-slug="{{ s.slug }}">Save</button>
+          <button type="button" id="btn-like" data-like-slug="{{ s.slug }}" data-like-count="{{ s.like_count or 0 }}">♥ {{ s.like_count or 0 }}</button>
+          <button type="button" id="btn-copy-link" data-share-url="{{ share_url }}">Copy link</button>
+          <a class="share-x" id="btn-share-x" href="{{ x_intent }}" target="_blank" rel="noopener">Share on X</a>
+        </div>
+      </div>
+    </div>
+    <p class="d-thesis">{{ s.thesis }}</p>
+    <div class="strip">
+      <div><div class="k">Sharpe</div><div class="v {{ 'up' if s.sharpe and s.sharpe >= 1 else '' }}">{{ fmt_sharpe(s.sharpe) }}</div></div>
+      <div><div class="k">Max DD</div><div class="v dn">{{ fmt_pct(s.max_dd) }}</div></div>
+      <div><div class="k">90d return</div><div class="v {{ 'up' if s.ret_90d and s.ret_90d > 0 else 'dn' }}">{{ fmt_pct(s.ret_90d) }}</div></div>
+      <div><div class="k">Win rate</div><div class="v">{% if s.win_rate is not none %}{{ '%.0f'|format(s.win_rate) }}%{% else %}—{% endif %}</div></div>
+      <div><div class="k">Last backtest</div><div class="v">{{ format_backtest(s.last_backtest_at) }}</div></div>
+    </div>
+    <section class="blk"><h2>Overview / how it works</h2>
+      {% for p in s.overview_paras %}<p>{{ p }}</p>{% endfor %}
+    </section>
+    <section class="blk"><h2>Rules · entry / exit</h2>
+      <ul>{% for r in s.rules %}<li>{{ r }}</li>{% endfor %}</ul>
+    </section>
+    <section class="blk"><h2>Risks &amp; limitations</h2>
+      <ul>{% for r in s.risks_list %}<li>{{ r }}</li>{% endfor %}</ul>
+    </section>
+    <section class="blk"><h2>Backtest notes</h2>
+      <span class="ph">Placeholder</span>
+      <ul>{% for l in s.backtest_lines %}<li>{{ l }}</li>{% endfor %}</ul>
+    </section>
+    <section class="blk"><h2>Idea → prompt</h2>
+      <p>Copy this into your coding agent to build a paper-trade bot for this idea.</p>
+      <button class="copy" type="button" onclick="navigator.clipboard.writeText(document.getElementById('prompt').innerText);this.textContent='Copied ✓'">Copy prompt</button>
+      <pre class="prompt" id="prompt">{{ s.paper_prompt }}</pre>
+    </section>
+    <section class="blk"><h2>Source</h2>
+      <p>{% if s.source_url %}<a href="{{ s.source_url }}" target="_blank" rel="noopener" style="color:var(--signal)">{{ s.source_name }} — {{ s.source_url }}</a>{% else %}{{ s.source_name }} (no public URL){% endif %}</p>
+    </section>
+    <a class="back" href="/">← Back to all strategies</a>
+  </main>
+</div>
+<div class="marquee" id="sponsor" aria-label="Sponsored">
+  <div class="marquee-label">Sponsored</div>
+  <div class="marquee-track-wrap">
+    <div class="marquee-track">
+      {% for loop_pass in [1, 2] %}
+      {% for sp in sponsors %}
+      <a class="sponsor" href="{{ sp.url or '#' }}"><span class="logo">{{ sp.logo_text }}</span><span class="name">{{ sp.name }}</span><span class="tagline">{{ sp.tagline }}</span></a>
+      {% endfor %}
+      <a class="sponsor cta" href="mailto:pingrunhuang@gmail.com?subject=StratIndex%20sponsorship"><span class="name">Advertise here</span><span class="tagline">→ sponsor StratIndex</span></a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var KEY="stratindex-saved";
+  function getSaved(){
+    try{var a=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(a)?a:[];}catch(e){return [];}
+  }
+  function setSaved(a){localStorage.setItem(KEY,JSON.stringify(a));}
+  function isSaved(slug){return getSaved().indexOf(slug)>=0;}
+  function toggleSave(slug){
+    var a=getSaved(),i=a.indexOf(slug);
+    if(i>=0)a.splice(i,1);else a.push(slug);
+    setSaved(a);return a.indexOf(slug)>=0;
+  }
+  function paintBtn(btn,on){
+    btn.textContent=on?"Saved":"Save";
+    btn.classList.toggle("is-saved",on);
+    btn.setAttribute("aria-pressed",on?"true":"false");
+  }
+  function updateNavCount(){
+    var el=document.getElementById("nav-saved");
+    if(!el)return;
+    var n=getSaved().length;
+    el.textContent=n?"Saved "+n:"Saved";
+  }
+  function applySavedView(){
+    var params=new URLSearchParams(location.search);
+    if(params.get("view")!=="saved")return;
+    var saved=getSaved(),shown=0;
+    document.querySelectorAll(".row[data-slug]").forEach(function(row){
+      var on=saved.indexOf(row.getAttribute("data-slug"))>=0;
+      row.style.display=on?"":"none";
+      if(on)shown++;
+    });
+    var empty=document.getElementById("saved-empty");
+    if(empty)empty.style.display=shown?"none":"block";
+    var band=document.getElementById("list-band-title");
+    if(band)band.innerHTML='<span class="mono" style="color:var(--signal)">'+shown+'</span> saved';
+  }
+  var b=document.getElementById("theme-toggle");
+  if(b){
+    function lab(){
+      var l=document.documentElement.getAttribute("data-theme")==="light";
+      b.textContent=l?"☾ Night":"☀ Day";
+      b.setAttribute("aria-label",l?"Switch to night mode":"Switch to day mode");
+    }
+    lab();
+    b.addEventListener("click",function(){
+      var n=document.documentElement.getAttribute("data-theme")==="light"?"dark":"light";
+      document.documentElement.setAttribute("data-theme",n);
+      localStorage.setItem("stratindex-theme",n);lab();
+    });
+  }
+  document.querySelectorAll("[data-save-slug]").forEach(function(btn){
+    var slug=btn.getAttribute("data-save-slug");
+    paintBtn(btn,isSaved(slug));
+    btn.addEventListener("click",function(e){
+      e.preventDefault();
+      paintBtn(btn,toggleSave(slug));
+      updateNavCount();
+      applySavedView();
+    });
+  });
+
+  // Like + share
+  var LIKE_KEY="stratindex-liked";
+  function getLiked(){
+    try{var a=JSON.parse(localStorage.getItem(LIKE_KEY)||"[]");return Array.isArray(a)?a:[];}catch(e){return [];}
+  }
+  function setLiked(a){localStorage.setItem(LIKE_KEY,JSON.stringify(a));}
+  function paintLike(btn,count,on){
+    btn.textContent="♥ "+count;
+    btn.classList.toggle("is-liked",on);
+    btn.setAttribute("aria-pressed",on?"true":"false");
+  }
+  var likeBtn=document.getElementById("btn-like");
+  if(likeBtn){
+    var slug=likeBtn.getAttribute("data-like-slug");
+    var count=parseInt(likeBtn.getAttribute("data-like-count")||"0",10)||0;
+    var already=getLiked().indexOf(slug)>=0;
+    paintLike(likeBtn,count,already);
+    likeBtn.addEventListener("click",function(){
+      if(getLiked().indexOf(slug)>=0)return;
+      var next=count+1;
+      paintLike(likeBtn,next,true);
+      fetch("/api/strategies/"+encodeURIComponent(slug)+"/like",{method:"POST",headers:{"Accept":"application/json"}})
+        .then(function(r){return r.json();})
+        .then(function(d){
+          if(typeof d.like_count==="number"){count=d.like_count;paintLike(likeBtn,count,true);}
+          var a=getLiked();if(a.indexOf(slug)<0){a.push(slug);setLiked(a);}
+        })
+        .catch(function(){paintLike(likeBtn,count,false);});
+      count=next;
+      var a=getLiked();if(a.indexOf(slug)<0){a.push(slug);setLiked(a);}
+    });
+  }
+  var copyBtn=document.getElementById("btn-copy-link");
+  if(copyBtn){
+    copyBtn.addEventListener("click",function(){
+      var url=copyBtn.getAttribute("data-share-url")||location.href;
+      navigator.clipboard.writeText(url).then(function(){
+        var prev=copyBtn.textContent;copyBtn.textContent="Copied ✓";
+        setTimeout(function(){copyBtn.textContent=prev;},1500);
+      });
+    });
+  }
+
+  updateNavCount();
+  applySavedView();
+  if(location.hash){
+    var t=document.querySelector(location.hash);
+    if(t)setTimeout(function(){t.scrollIntoView({behavior:"smooth",block:"start"});},50);
+  }
+})();
+</script>
+</body>
+</html>

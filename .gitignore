@@ -1,0 +1,7 @@
+.venv/
+.flask_secret_key
+__pycache__/
+*.pyc
+.env
+*.db
+.DS_Store
