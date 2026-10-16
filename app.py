@@ -28,7 +28,7 @@ import db as dbmod
 
 BASE = Path(__file__).resolve().parent
 HKT = ZoneInfo("Asia/Hong_Kong")
-PORT = 5055
+PORT = int(os.environ.get("PORT") or os.environ.get("STRATINDEX_PORT") or "5055")
 SECRET_FILE = BASE / ".flask_secret_key"
 
 app = Flask(__name__, template_folder=str(BASE / "templates"))

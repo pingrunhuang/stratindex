@@ -20,7 +20,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-On first run the app creates `stratindex.db` and seeds 12 strategies + 6 sponsors.
+On first run the app creates the SQLite DB (default `./stratindex.db`, or `STRATINDEX_DB_PATH` / `STRATINDEX_DATA_DIR`) and seeds 12 strategies + 6 sponsors.
 
 To re-seed from scratch:
 
@@ -47,10 +47,64 @@ If `STRATINDEX_SECRET_KEY` is unset, Flask writes a random key to `.flask_secret
 
 | Env | Purpose |
 |-----|---------|
+| `PORT` | Listen port (default `5055`; also used by Docker Compose publish) |
+| `STRATINDEX_DB_PATH` | Full path to SQLite file (Docker default `/data/stratindex.db`) |
+| `STRATINDEX_DATA_DIR` / `DATA_DIR` | Directory for `stratindex.db` if `STRATINDEX_DB_PATH` unset |
 | `STRATINDEX_ADMIN_PASSWORD` | Browser login for `/admin/*` (humans) |
 | `STRATINDEX_INGEST_TOKEN` | Bearer / `X-StratIndex-Token` for `POST /admin/run-ingest` (Digester bot). Do **not** reuse the admin password. |
-| `STRATINDEX_SECRET_KEY` | Flask session signing |
+| `STRATINDEX_SECRET_KEY` | Flask session signing (set this in Docker — do not rely on ephemeral `.flask_secret_key`) |
 | `STRATINDEX_PUBLIC_BASE_URL` | Absolute URL for Copy link / Share on X |
+
+
+## Docker
+
+SQLite lives **outside** the image via a bind mount on `/data`. The app reads `STRATINDEX_DB_PATH` (default in the image: `/data/stratindex.db`).
+
+### Build
+
+```bash
+cd /path/to/stratindex
+docker build -t stratindex:local .
+```
+
+### Run (one-off)
+
+```bash
+mkdir -p data
+docker run --rm -p 5055:5055 \
+  -e PORT=5055 \
+  -e STRATINDEX_DB_PATH=/data/stratindex.db \
+  -e STRATINDEX_ADMIN_PASSWORD='choose-a-strong-password' \
+  -e STRATINDEX_SECRET_KEY='long-random-string' \
+  -e STRATINDEX_INGEST_TOKEN='long-random-bot-token' \
+  -e STRATINDEX_PUBLIC_BASE_URL='https://stratindex.frank.com' \
+  -v "$(pwd)/data:/data" \
+  stratindex:local
+```
+
+Custom host port (same `PORT` for publish and listen):
+
+```bash
+docker run --rm -p 8080:8080 -e PORT=8080 \
+  -e STRATINDEX_ADMIN_PASSWORD='...' -e STRATINDEX_SECRET_KEY='...' \
+  -v "$(pwd)/data:/data" \
+  stratindex:local
+```
+
+### Compose
+
+```bash
+cp .env.example .env   # fill secrets; never commit .env
+mkdir -p data
+docker compose up -d --build
+# open http://127.0.0.1:${PORT:-5055}/
+docker compose logs -f
+docker compose down
+```
+
+Compose maps `"${PORT:-5055}:${PORT:-5055}"` and passes the same `PORT` into the container so listen and publish stay aligned. Host SQLite dir defaults to `./data` → `/data` (`STRATINDEX_DATA_HOST` overrides the host side).
+
+Behind nginx, keep publishing only on localhost if desired (`ports: ["127.0.0.1:${PORT:-5055}:${PORT:-5055}"]`) and point `proxy_pass` at that port. Sample vhosts stay under `deploy/`.
 
 ## API
 

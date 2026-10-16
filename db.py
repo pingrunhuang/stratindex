@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 
@@ -9,7 +10,29 @@ from details import enrich
 
 DETAIL_COLS = ("overview", "rules_json", "risks", "backtest_notes", "paper_prompt")
 
-DB_PATH = Path(__file__).resolve().parent / "stratindex.db"
+
+def resolve_db_path() -> Path:
+    """SQLite file location.
+
+    Priority:
+      1. STRATINDEX_DB_PATH — full path to the .db file
+      2. STRATINDEX_DATA_DIR or DATA_DIR — directory; file is <dir>/stratindex.db
+      3. ./stratindex.db next to this module (local/dev default)
+    """
+    explicit = (os.environ.get("STRATINDEX_DB_PATH") or "").strip()
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    data_dir = (
+        os.environ.get("STRATINDEX_DATA_DIR")
+        or os.environ.get("DATA_DIR")
+        or ""
+    ).strip()
+    if data_dir:
+        return (Path(data_dir).expanduser().resolve() / "stratindex.db")
+    return Path(__file__).resolve().parent / "stratindex.db"
+
+
+DB_PATH = resolve_db_path()
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS strategies (

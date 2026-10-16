@@ -1,0 +1,31 @@
+# StratIndex — run with SQLite on a host bind mount
+#
+#   cp .env.example .env   # fill secrets
+#   mkdir -p data
+#   docker compose up -d --build
+#
+# Host port and container listen port both use PORT (default 5055).
+
+services:
+  stratindex:
+    build: .
+    image: stratindex:local
+    container_name: stratindex
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5055}:${PORT:-5055}"
+    environment:
+      PORT: ${PORT:-5055}
+      STRATINDEX_DB_PATH: /data/stratindex.db
+      STRATINDEX_DATA_DIR: /data
+      STRATINDEX_ADMIN_PASSWORD: ${STRATINDEX_ADMIN_PASSWORD:-}
+      STRATINDEX_SECRET_KEY: ${STRATINDEX_SECRET_KEY:-}
+      STRATINDEX_INGEST_TOKEN: ${STRATINDEX_INGEST_TOKEN:-}
+      STRATINDEX_PUBLIC_BASE_URL: ${STRATINDEX_PUBLIC_BASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      # Persist SQLite outside the image
+      - ${STRATINDEX_DATA_HOST:-./data}:/data
+    # Optional: only listen on localhost when behind nginx on the same host
+    # network_mode: bridge
