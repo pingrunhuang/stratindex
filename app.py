@@ -276,12 +276,23 @@ def _protect_admin():
     nxt = path
     if request.query_string:
         nxt = f"{path}?{request.query_string.decode()}"
+    # /admin alone is not a page — send people to the ingest console
+    if path.rstrip("/") == "/admin":
+        nxt = "/admin/ingest"
     return redirect(url_for("admin_login", next=nxt))
+
+
+@app.get("/admin")
+@app.get("/admin/")
+def admin_root():
+    return redirect(url_for("admin_ingest"))
 
 
 @app.get("/admin/login")
 def admin_login():
     nxt = request.args.get("next") or "/admin/ingest"
+    if nxt.rstrip("/") == "/admin":
+        nxt = "/admin/ingest"
     if admin_logged_in():
         return redirect(nxt if nxt.startswith("/admin") else "/admin/ingest")
     return render_template(
@@ -295,7 +306,7 @@ def admin_login():
 @app.post("/admin/login")
 def admin_login_post():
     nxt = request.form.get("next") or "/admin/ingest"
-    if not nxt.startswith("/admin"):
+    if not nxt.startswith("/admin") or nxt.rstrip("/") == "/admin":
         nxt = "/admin/ingest"
     expected = (os.environ.get("STRATINDEX_ADMIN_PASSWORD") or "").strip()
     if not expected:
