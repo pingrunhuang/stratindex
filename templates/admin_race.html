@@ -1,0 +1,23 @@
+<!DOCTYPE html><html lang="en" data-theme="dark"><head>{% include "_page_head.html" %}<title>Race review · StratIndex</title></head>
+<body><div class="frame">{% set crumb = "admin / race" %}{% include "_page_top.html" %}
+<div class="page">
+  <h1>Race submissions</h1>
+  {% for cat, m in messages %}<div class="{{ 'ok' if cat == 'ok' else 'err' }}">{{ m }}</div>{% endfor %}
+  <div class="sort-row">{% for st in ['pending','approved','rejected','all'] %}<a class="chip {{ 'active' if status == st else '' }}" href="?status={{ st }}">{{ st }} {{ counts.get(st, '') }}</a>{% endfor %}
+    <form method="post" action="/admin/race/run" style="margin-left:auto"><button class="btn" type="submit">Re-run race now</button></form>
+    <a class="chip" href="/admin/ingest">Ingest review →</a></div>
+  {% for x in rows %}
+  <div class="card">
+    <div class="meta">#{{ x.id }} · {{ x.status }} · {{ x.style }} · by {{ x.author }} · {{ x.created_at }} UTC{% if x.is_seed %} · seed{% endif %}</div>
+    <div class="meta">✉ {{ x.email or '—' }}{% if x.notified_at %} · <span style="color:var(--good)">notified {{ x.notified_at }} UTC</span>{% elif x.notify_error %} · <span style="color:var(--danger)">email: {{ x.notify_error }}</span>{% endif %}</div>
+    <h3 class="row-title">{{ x.name }} <span class="meta">({{ x.slug }})</span></h3>
+    <p class="thesis">{{ x.description }}</p>
+    <pre class="code">{{ x.spec_pretty }}</pre>
+    {% if x.status == 'pending' %}
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <form method="post" action="/admin/race/{{ x.id }}/approve"><button class="btn" type="submit">Approve → join grid &amp; re-run</button></form>
+      <form method="post" action="/admin/race/{{ x.id }}/reject"><button class="btn" style="background:transparent;color:var(--danger);border:1px solid var(--danger)" type="submit">Reject</button></form>
+    </div>{% endif %}
+  </div>
+  {% else %}<p class="thesis">Nothing here.</p>{% endfor %}
+</div></div>{% include "_theme_js.html" %}</body></html>

@@ -27,6 +27,9 @@ from flask import (
 )
 
 import db as dbmod
+from race import store as race_store
+from race.engine import SpecError
+from race.web import race_context, hkt
 
 BASE = Path(__file__).resolve().parent
 HKT = ZoneInfo("Asia/Hong_Kong")
@@ -255,7 +258,7 @@ def _protect_admin():
         return None
 
     # Remote ingest trigger: JSON 401 (not HTML redirect) for Digester/curl
-    if path == "/admin/run-ingest":
+    if path in ("/admin/run-ingest", "/admin/race/run"):
         if admin_authorized():
             return None
         tok_ok, tok_err = token_auth_ok()
@@ -346,6 +349,8 @@ def index():
         strategies = fetch_strategies(conn, **{k: v for k, v in f.items() if k != "limit"})
         display = strategies
         sponsors = fetch_sponsors(conn)
+    with race_store.conn() as rc:
+        race_run, racers = race_store.leaderboard(rc)
 
     now = datetime.now(HKT)
     updated = now.strftime("%b %-d, %Y · %H:%M HKT")
@@ -373,7 +378,138 @@ def index():
         fmt_pct=fmt_pct,
         fmt_sharpe=fmt_sharpe,
         public_base=public_base_url(),
+        **race_context(race_run, racers),
     )
+
+
+# --- Strategy race ----------------------------------------------------------------
+
+@app.get("/api/race")
+def api_race():
+    with race_store.conn() as rc:
+        run, racers = race_store.leaderboard(rc)
+    slim = [{"position": r["position"], "delta": r["delta"], "slug": r["slug"], "name": r["name"],
+             "spec": r["res"]["spec"], "oos": r["res"]["oos"], "full": r["res"]["full"],
+             "ret_30d": r["res"]["ret_30d"]} for r in racers]
+    return jsonify({"run": run, "racers": slim})
+
+
+@app.get("/race/<slug>")
+def race_detail(slug):
+    with race_store.conn() as rc:
+        run, racers = race_store.leaderboard(rc)
+        row = rc.execute("SELECT * FROM race_strategies WHERE slug=? AND status='approved'", (slug,)).fetchone()
+    if row is None:
+        abort(404)
+    r = next((x for x in racers if x["slug"] == slug), None)
+    spec_pretty = json.dumps(json.loads(row["spec_json"]), indent=2)
+    return render_template("race_detail.html", s=dict(row), r=r, run=run, field=len(racers),
+                           spec_pretty=spec_pretty, hkt=hkt,
+                           curve_json=json.dumps({"curve": r["res"]["curve"], "oos": r["res"]["oos_start_ts"]}) if r else "null",
+                           **{k: v for k, v in race_context(run, racers).items() if k in ("fee_note", "race_colors")})
+
+
+SUBMIT_EXAMPLE = {
+    "symbol": "BTC-USDT", "timeframe": "4h",
+    "indicators": {"fast": {"type": "ema", "period": 12}, "slow": {"type": "ema", "period": 26}},
+    "entry": {"all": [{"left": "fast", "op": "cross_above", "right": "slow"}]},
+    "exit": {"any": [{"left": "fast", "op": "cross_below", "right": "slow"}]},
+    "stop": {"type": "atr", "period": 14, "mult": 2},
+}
+
+
+@app.route("/submit", methods=["GET", "POST"])
+def race_submit():
+    error, done, form = None, None, {}
+    if request.method == "POST":
+        form = request.form.to_dict()
+        try:
+            spec = json.loads(form.get("spec_json") or "")
+        except ValueError as e:
+            error = f"Spec is not valid JSON: {e}"
+        else:
+            try:
+                with race_store.conn() as rc:
+                    done = race_store.submit(rc, form.get("name"), form.get("author"),
+                                             form.get("description"), form.get("style"), spec,
+                                             email=form.get("email"))
+            except SpecError as e:
+                error = str(e)
+    return render_template("race_submit.html", error=error, done=done, form=form,
+                           example=json.dumps(SUBMIT_EXAMPLE, indent=2), styles=race_store.STYLES), (400 if error else 200)
+
+
+@app.get("/admin/race")
+def admin_race():
+    status = (request.args.get("status") or "pending").lower()
+    with race_store.conn() as rc:
+        q = "SELECT * FROM race_strategies" + ("" if status == "all" else " WHERE status=?") + " ORDER BY id DESC"
+        rows = [dict(x) for x in rc.execute(q, () if status == "all" else (status,))]
+        counts = {x["status"]: x["c"] for x in rc.execute("SELECT status, COUNT(*) c FROM race_strategies GROUP BY status")}
+    for x in rows:
+        x["spec_pretty"] = json.dumps(json.loads(x["spec_json"]), indent=2)
+    return render_template("admin_race.html", rows=rows, status=status, counts=counts,
+                           messages=get_flashed_messages(with_categories=True))
+
+
+def _notify_submitter(rc, row, kind, position=None, field=0):
+    """Email after DB commit; records notified_at / notify_error. Never raises."""
+    from race import notify
+    if not row["email"]:
+        return "no email on file (seed/legacy)"
+    try:
+        if kind == "approved":
+            subj, body = notify.approved_email(row["name"], row["slug"], position, field, public_base_url())
+        else:
+            subj, body = notify.rejected_email(row["name"])
+        sent, status = notify.send(row["email"], subj, body)
+    except Exception as e:  # noqa: BLE001
+        sent, status = False, f"error: {e}"
+    race_store.record_notify(rc, row["id"], sent, status)
+    return status
+
+
+@app.post("/admin/race/<int:sid>/approve")
+def admin_race_approve(sid):
+    with race_store.conn() as rc:
+        row = rc.execute("SELECT * FROM race_strategies WHERE id=?", (sid,)).fetchone()
+        if row is None:
+            abort(404)
+        race_store.set_status(rc, sid, "approved")  # commits
+        position, field, msg, cat = None, 0, f"Approved #{sid}", "ok"
+        try:
+            rid = race_store.run_race(rc)
+            _, racers = race_store.leaderboard(rc)
+            field = len(racers)
+            position = next((r["position"] for r in racers if r["id"] == sid), None)
+            msg += f"; re-ran race (run #{rid}) → P{position}/{field}"
+        except Exception as e:  # noqa: BLE001
+            msg, cat = msg + f"; race run failed: {e}", "bad"
+        status = _notify_submitter(rc, row, "approved", position, field)
+    flash(f"{msg} · email: {status}", cat)
+    return redirect(url_for("admin_race"))
+
+
+@app.post("/admin/race/<int:sid>/reject")
+def admin_race_reject(sid):
+    with race_store.conn() as rc:
+        row = rc.execute("SELECT * FROM race_strategies WHERE id=?", (sid,)).fetchone()
+        if row is None:
+            abort(404)
+        race_store.set_status(rc, sid, "rejected")
+        status = _notify_submitter(rc, row, "rejected")
+    flash(f"Rejected #{sid} · email: {status}", "ok")
+    return redirect(url_for("admin_race"))
+
+
+@app.post("/admin/race/run")
+def admin_race_run():
+    with race_store.conn() as rc:
+        rid = race_store.run_race(rc)
+    if request.is_json or _token_from_request():
+        return jsonify({"ok": True, "run_id": rid})
+    flash(f"Race run #{rid} complete", "ok")
+    return redirect(url_for("admin_race"))
 
 
 @app.get("/api/strategies")

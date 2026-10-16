@@ -1,0 +1,52 @@
+<script>
+(function(){
+  // countdown to next 4h candle close (UTC 00/04/08/12/16/20)
+  var cd=document.getElementById("race-countdown");
+  function tick(){if(!cd)return;var n=Date.now(),p=4*3600e3,r=p-(n%p),s=Math.floor(r/1e3);
+    cd.textContent=[s/3600|0,(s/60|0)%60,s%60].map(function(x){return(x<10?"0":"")+x}).join(":");}
+  tick();setInterval(tick,1000);
+  var el=document.getElementById("race-data"),cv=document.getElementById("race-canvas");
+  if(!el||!cv)return;
+  var D=JSON.parse(el.textContent),ctx=cv.getContext("2d"),lap=document.getElementById("lap"),btn=document.getElementById("play");
+  var lg=document.getElementById("chart-legend");
+  lg.innerHTML=D.series.map(function(s){return '<span><span class="sw" style="background:'+s.color+'"></span>P'+s.pos+' '+s.name+'</span>'}).join("");
+  var N=D.series[0].pts.length,lo=Infinity,hi=-Infinity;
+  D.series.forEach(function(s){s.pts.forEach(function(v){lo=Math.min(lo,v);hi=Math.max(hi,v)})});
+  lo=Math.floor((lo-2)/5)*5;hi=Math.ceil((hi+2)/5)*5;
+  var prog=N,raf=null;
+  function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+  function fmt(t){var d=new Date(t);return d.toLocaleDateString("en",{month:"short",day:"numeric",timeZone:"UTC"})}
+  function draw(){
+    var dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+    var L=40,R=78,T=12,B=26,pw=W-L-R,ph=H-T-B,line=css("--line"),faint=css("--faint");
+    ctx.clearRect(0,0,W,H);ctx.font="10px Geist Mono, monospace";ctx.fillStyle=faint;ctx.strokeStyle=line;ctx.lineWidth=1;
+    var X=function(i){return L+pw*i/(N-1)},Y=function(v){return T+ph*(1-(v-lo)/(hi-lo))};
+    var step=(hi-lo)>60?20:(hi-lo)>25?10:5;
+    for(var v=lo;v<=hi;v+=step){ctx.globalAlpha=v===100?.9:.35;ctx.setLineDash(v===100?[]:[2,4]);ctx.beginPath();ctx.moveTo(L,Y(v));ctx.lineTo(L+pw,Y(v));ctx.stroke();ctx.globalAlpha=1;ctx.textAlign="right";ctx.fillText(v,L-6,Y(v)+3)}
+    ctx.setLineDash([]);ctx.textAlign="center";
+    for(var k=0;k<=4;k++){var i=Math.round((N-1)*k/4);ctx.fillText(fmt(D.ts[i]),X(i),H-8)}
+    ctx.save();ctx.translate(10,T+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText("Equity (start=100)",0,0);ctx.restore();
+    // checkered finish line
+    var fx=L+pw;for(var y=T,c=0;y<T+ph;y+=5,c++){ctx.fillStyle=c%2?css("--text"):css("--bg");ctx.fillRect(fx,y,3,5);ctx.fillStyle=c%2?css("--bg"):css("--text");ctx.fillRect(fx+3,y,3,5)}
+    var m=Math.max(1,Math.min(N,Math.floor(prog))),heads=[];
+    D.series.slice().reverse().forEach(function(s){
+      ctx.strokeStyle=s.color;ctx.lineWidth=s.pos===1?2.6:1.6;ctx.beginPath();
+      for(var i=0;i<m;i++){i?ctx.lineTo(X(i),Y(s.pts[i])):ctx.moveTo(X(i),Y(s.pts[i]))}ctx.stroke();
+      heads.push({s:s,x:X(m-1),y:Y(s.pts[m-1]),v:s.pts[m-1]});
+    });
+    heads.sort(function(a,b){return a.y-b.y});var last=-99;
+    heads.forEach(function(h){ctx.fillStyle=h.s.color;ctx.beginPath();ctx.arc(h.x,h.y,3.5,0,7);ctx.fill();
+      var ly=Math.max(h.y,last+11);last=ly;ctx.textAlign="left";ctx.font="bold 10px Geist Mono, monospace";ctx.fillText(h.s.short+" "+h.v.toFixed(1),h.x+(m===N?10:6),ly+3);ctx.font="10px Geist Mono, monospace"});
+    var order=D.series.slice().sort(function(a,b){return b.pts[m-1]-a.pts[m-1]});
+    lap.textContent=fmt(D.ts[m-1])+" · P1 "+order[0].short;
+  }
+  function play(){cancelAnimationFrame(raf);prog=1;var t0=null,dur=7000;btn.textContent="■ Racing";
+    function f(t){if(!t0)t0=t;prog=1+(N-1)*Math.min(1,(t-t0)/dur);draw();if(prog<N)raf=requestAnimationFrame(f);else btn.textContent="▶ Replay"}raf=requestAnimationFrame(f)}
+  btn.addEventListener("click",play);window.addEventListener("resize",draw);
+  document.getElementById("theme-toggle")&&document.getElementById("theme-toggle").addEventListener("click",function(){setTimeout(draw,30)});
+  var rp=(location.search.match(/[?&]replay=([0-9.]+)/)||[])[1];
+  if(rp!==undefined){prog=1+(N-1)*Math.min(1,parseFloat(rp));draw();return}
+  draw();
+  if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches)setTimeout(play,500);
+})();
+</script>

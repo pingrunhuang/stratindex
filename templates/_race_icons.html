@@ -1,0 +1,3 @@
+{% macro asset_icon(sym) -%}{% set a = sym.split('-')[0] %}<span class="ico" title="{{ sym }}">{{ {'BTC':'₿','ETH':'Ξ','SOL':'◎'}.get(a, '¤') }} {{ a }}</span>{%- endmacro %}
+{% macro style_icon(st) -%}<span class="ico" title="Style">{{ {'Trend':'↗','Mean rev':'⇄','Breakout':'⤒','Momentum':'»'}.get(st,'•') }} {{ st }}</span>{%- endmacro %}
+{% macro tf_icon(tf) -%}<span class="ico" title="Timeframe">⏱ {{ tf }}</span>{%- endmacro %}

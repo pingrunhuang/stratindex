@@ -1,0 +1,29 @@
+<!DOCTYPE html><html lang="en" data-theme="dark"><head>{% include "_page_head.html" %}<title>Enter the Grand Prix · StratIndex</title></head>
+<body><div class="frame">{% set crumb = "submit" %}{% include "_page_top.html" %}
+<div class="page">
+  <div><div class="race-head"><span class="chk"></span><span class="livebadge"><i></i>ENTRY LIST OPEN</span></div>
+  <h1>Enter your strategy</h1>
+  <p class="thesis" style="max-width:80ch">Rules as JSON only — no code. Every entry is reviewed by an admin before it joins the grid, then backtested on the same OKX 4h data with the same fees (0.1%/side + 0.05% slippage) as everyone else.</p></div>
+  {% if done %}<div class="ok">Submitted as <b>{{ done }}</b> — pending review. It will appear on the grid after approval.</div>{% endif %}
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  <form method="post" class="card" style="display:grid;gap:12px">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px">
+      <label>Strategy name<input name="name" required minlength="3" maxlength="60" value="{{ form.name or '' }}"></label>
+      <label>Your handle<input name="author" maxlength="40" value="{{ form.author or '' }}" placeholder="@you"></label>
+      <label>Style<select name="style">{% for st in styles %}<option {{ 'selected' if form.style == st else '' }}>{{ st }}</option>{% endfor %}</select></label>
+    </div>
+    <label>Email (required — only used to tell you the review result, never shown publicly)<input name="email" type="email" required maxlength="254" value="{{ form.email or '' }}" placeholder="you@example.com"></label>
+    <label>One-line idea<input name="description" maxlength="400" value="{{ form.description or '' }}"></label>
+    <label>Spec JSON<textarea name="spec_json" spellcheck="false">{{ form.spec_json or example }}</textarea></label>
+    <div><button class="btn" type="submit">Submit for review</button></div>
+  </form>
+  <div class="card"><h2 class="label">Spec reference</h2>
+    <ol class="steps">
+      <li><code>symbol</code>: BTC-USDT · ETH-USDT · SOL-USDT. <code>timeframe</code>: 4h. Long-only spot.</li>
+      <li><code>indicators</code> (1–6, named): <code>sma</code>/<code>ema</code> {period, source}, <code>rsi</code> {period}, <code>atr</code> {period}, <code>bollinger</code> {period, k} → <code>name.upper|mid|lower</code>, <code>donchian</code> {period} → <code>name.upper|mid|lower</code> (previous N bars).</li>
+      <li>Conditions: <code>{"left": series|number, "op": "cross_above|cross_below|gt|lt", "right": series|number}</code>. Series: open, high, low, close or your indicator names.</li>
+      <li><code>entry</code>: <code>{"all": [...]}</code> or <code>{"any": [...]}</code> (max 4). <code>exit</code>: same, optional if a stop is set.</li>
+      <li><code>stop</code>: <code>{"type":"atr","period":14,"mult":2}</code> or <code>{"type":"pct","value":5}</code>.</li>
+    </ol>
+  </div>
+</div></div>{% include "_theme_js.html" %}</body></html>

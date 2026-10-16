@@ -16,3 +16,5 @@ data/*
 !data/.gitkeep
 agent-tools/
 .cursor/
+ohlcv.db
+tests/

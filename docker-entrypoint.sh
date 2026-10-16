@@ -7,6 +7,8 @@ export STRATINDEX_DATA_DIR="${STRATINDEX_DATA_DIR:-/data}"
 mkdir -p "$(dirname "$STRATINDEX_DB_PATH")"
 # Create schema / seed if empty (safe; does not wipe existing rows unless force)
 python -c "import db; print('DB:', db.init_db())"
+# Race: create tables + seed the 5 house strategies (no network). Backtests run via `python -m race run` (cron).
+python -m race seed || true
 
 if [ "$1" = "gunicorn" ] || [ -z "$1" ]; then
   exec gunicorn \

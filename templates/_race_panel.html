@@ -1,0 +1,52 @@
+{% from "_race_icons.html" import asset_icon, style_icon, tf_icon %}
+<section class="race" id="race">
+  <div class="race-head">
+    <div class="race-title"><span class="chk"></span>Strategy Grand Prix</div>
+    <span class="livebadge"><i></i>LIVE</span>
+    <div class="race-meta">
+      <span>Ranked by <b>OOS Sharpe</b> (last 6 mo)</span>
+      <span>Next 4h candle close <b id="race-countdown">--:--:--</b></span>
+      {% if race_run %}<span>Run #{{ race_run.id }} · {{ race_run_label }}</span>{% endif %}
+    </div>
+  </div>
+  {% if not racers %}
+  <p class="thesis">No race results yet — run <code>python -m race run</code>.</p>
+  {% else %}
+  {% set best = race_best %}
+  <div class="race-grid">
+    <div class="tower" role="table" aria-label="Timing tower">
+      <div class="tower-h"><span>Pos</span><span>±</span><span>Strategy</span><span>Sharpe</span><span>Gap</span><span>MaxDD</span><span>30d</span></div>
+      {% for r in racers %}
+      {% set o = r.res.oos %}
+      <div class="tw {{ 'p1' if r.position == 1 else '' }} {{ 'flash-up' if r.delta and r.delta > 0 else ('flash-dn' if r.delta and r.delta < 0 else '') }}" role="row" style="animation-delay:{{ loop.index0 * 0.07 }}s">
+        <span class="bar" style="background:{{ race_colors[loop.index0 % race_colors|length] }}"></span>
+        <span class="pos">{{ r.position }}</span>
+        {% if r.delta is none %}<span class="chg nw">NEW</span>{% elif r.delta > 0 %}<span class="chg up">▲{{ r.delta }}</span>{% elif r.delta < 0 %}<span class="chg dn">▼{{ -r.delta }}</span>{% else %}<span class="chg eq">–</span>{% endif %}
+        <span class="who"><a href="/race/{{ r.slug }}">{{ r.name }}</a><small>{{ asset_icon(r.res.spec.symbol) }}{{ style_icon(r.style) }}{{ tf_icon(r.res.spec.timeframe) }}</small></span>
+        <span class="num {{ 'm-purple' if o.sharpe == best.sharpe else ('m-green' if o.sharpe > 0 else 'm-yellow') }}">{{ '%.2f'|format(o.sharpe) }}</span>
+        <span class="num gap">{{ 'LEADER' if r.position == 1 else '+%.2f'|format(r.gap) }}</span>
+        <span class="num {{ 'm-purple' if o.max_dd == best.dd else ('m-green' if o.max_dd > -15 else 'm-yellow') }}">{{ '%.1f'|format(o.max_dd) }}%</span>
+        <span class="num {{ 'm-purple' if r.fastest else ('m-green' if r.res.ret_30d and r.res.ret_30d > 0 else 'm-yellow') }}">{{ '%+.1f'|format(r.res.ret_30d or 0) }}%{% if r.fastest %}<span class="fl" title="Fastest lap: best 30d return">FL</span>{% endif %}</span>
+      </div>
+      {% endfor %}
+      <div class="legend-row">
+        <span><span class="sw" style="background:var(--purple)"></span>best in field</span>
+        <span><span class="sw" style="background:var(--green)"></span>positive / DD &gt; −15%</span>
+        <span><span class="sw" style="background:var(--yellow)"></span>negative / deep DD</span>
+        <span>FL = fastest lap (best 30d)</span><span>Gap = Sharpe behind leader</span>
+      </div>
+    </div>
+    <div class="replay">
+      <div class="replay-h"><span class="label">Race replay · OOS equity, start = 100</span><span class="lap" id="lap">—</span><button class="playbtn" id="play" type="button">▶ Replay</button></div>
+      <canvas id="race-canvas" aria-label="Equity race replay"></canvas>
+      <div class="chart-legend" id="chart-legend"></div>
+    </div>
+  </div>
+  <div class="race-foot">
+    <span>{{ fee_note }}</span>
+    <a href="/submit">＋ Enter your strategy</a>
+    <a href="/api/race">JSON</a>
+  </div>
+  <script id="race-data" type="application/json">{{ race_json|safe }}</script>
+  {% endif %}
+</section>

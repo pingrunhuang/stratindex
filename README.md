@@ -215,3 +215,35 @@ If the password env var is unset, login always fails with a clear “set STRATIN
 
 - All Sharpe / MaxDD / return / win-rate figures are **fabricated** for UI preview.
 - Not investment advice.
+
+## Strategy Grand Prix (race leaderboard)
+
+Rule-based strategies (JSON only, no code) are backtested on the same public data and costs, then ranked on the homepage like an F1 timing tower.
+
+- **Spec**: `race/engine.py::validate_spec` — indicators `sma`, `ema`, `rsi`, `atr`, `bollinger`, `donchian`; conditions `cross_above|cross_below|gt|lt`; `entry`/`exit` as `{"all":[…]}`/`{"any":[…]}`; stop `atr` or `pct`. Long-only spot, BTC/ETH/SOL-USDT, 4h.
+- **Data**: OKX public `history-candles` (Binance is geo-blocked from the box), confirmed 4h candles since 2022-01-01, cached in `ohlcv.db` next to the main DB (i.e. `/data/ohlcv.db` in Docker).
+- **Engine**: signal on close, fill next open, fee 0.1%/side + 0.05% slippage per fill, intrabar stops. Reports total return, CAGR, Sharpe (√2190), max DD, win rate, trades, equity curve; OOS = last 182 days. Rank = OOS Sharpe, tie → shallower OOS DD.
+- **Pages**: `/` (timing tower + race replay), `/race/<slug>` (metrics, spec, reproduction steps), `/submit` (staging, `pending`), `/admin/race` (approve → joins grid + re-run; reject), `/api/race`.
+- **Never auto-promotes**: submissions stay `pending` until an admin approves.
+
+```bash
+python -m race seed      # tables + 5 house strategies
+python -m race fetch     # backfill OHLCV (~3 min first time, then incremental)
+python -m race run       # refresh data, backtest all approved, store a new run, print table
+python tests/test_race.py
+# cron every 4h (after candle close), or: curl -XPOST -H "Authorization: Bearer $STRATINDEX_INGEST_TOKEN" $BASE/admin/race/run
+```
+
+### Submitter emails
+
+`/submit` requires an email (validated, stored on the row, shown only in `/admin/race`). On **Approve** the submitter gets an email with their position after the re-run and a link to `$STRATINDEX_PUBLIC_BASE_URL/race/<slug>`; on **Reject** a short polite note. Sent with stdlib `smtplib` *after* the DB commit; the result is written to `notified_at` / `notify_error` and shown in the admin flash. If `SMTP_HOST`/`SMTP_FROM` are unset, sending is skipped and logged — approve/reject never fail because of email.
+
+| Env | Meaning |
+|---|---|
+| `SMTP_HOST` | SMTP server (empty = don't send) |
+| `SMTP_PORT` | default 587 (starttls) / 465 (ssl) |
+| `SMTP_USER`, `SMTP_PASSWORD` | login (optional) |
+| `SMTP_FROM` | e.g. `StratIndex <noreply@yourdomain>` |
+| `SMTP_TLS` | `starttls` (default), `ssl`, or `none` |
+
+No new Python dependencies (pure-stdlib engine + smtplib).

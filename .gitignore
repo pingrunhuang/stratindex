@@ -8,3 +8,5 @@ __pycache__/
 data/*.db
 data/*
 !data/.gitkeep
+ohlcv.db
+data/*.db
